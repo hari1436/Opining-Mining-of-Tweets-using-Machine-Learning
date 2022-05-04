@@ -229,10 +229,10 @@ df
 
 # Connection to twitter
 ```{r}
-consumer_key <- 'EhyZY13tQluZhF8d3QB8Qx6V1'
-consumer_secret <- 'DWUtAOHdyAzydexftQTPuLFri2e7TrCkeN470NNNmXrDN3X8M8'
-access_token <- '1441737420374822919-JQuOcw0i4btkOBFutBG3UMXdMkgJPS'
-access_secret <- 'cvtCrSuA9NcIigJscuiD609xkDJiTt6LONkma4cz16UEI'
+consumer_key <- ''
+consumer_secret <- ''
+access_token <- ''
+access_secret <- ''
 ```
 
 ```{r}
