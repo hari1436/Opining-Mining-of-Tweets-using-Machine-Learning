@@ -9,9 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
-setwd("D:/CSE 3506 DA")
-```
+
 
 # Importing libraries
 
