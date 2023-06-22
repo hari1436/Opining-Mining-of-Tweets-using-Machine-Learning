@@ -271,8 +271,6 @@ cor = tm_map(cor, stripWhitespace)
 
 wordcloud(cor, random.order=F,max.words=80, col=rainbow(50), scale=c(4,0.5))
 
-
-
 dtm = DocumentTermMatrix((cor))
 dtm
 dim(dtm)
