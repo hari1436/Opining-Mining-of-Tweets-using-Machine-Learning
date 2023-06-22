@@ -1,0 +1,201 @@
+---
+title: "OPINION MINING"
+author: "19BCE1436"
+date: "18/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("D:/CSE 3506 DA")
+```
+
+# Importing libraries
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+library(data.table)
+library(ROAuth)
+library(caret)
+library(randomForest)
+library(twitteR)
+library(tm)
+library(SnowballC )
+```
+# Loading the dataset for training the model
+```{r}
+data <- fread("sentiments_data.csv")   # 16L records and 6 attributes
+colnames(data)<-c("target","id","date","flag","user","text")
+str(data)
+
+```
+
+# Exploratory Data Analysis
+```{r}
+head(data)
+glimpse(data)
+summary(data)
+dim(data)
+```
+
+# Data Preprocessing
+```{r}
+data<-data[,-c(2,3,4,5)]   # Removing unwanted attributes from the dataset 
+str(data)
+data$target=factor(data$target)
+```
+
+```{r}
+data<-sample_n(data,16000)
+```
+
+```{r}
+corpus = VCorpus(VectorSource(data$text))
+
+removeURL <- function(x) gsub("http[^[:space:]]*", "", x)
+corpus <- tm_map(corpus, content_transformer(removeURL))
+
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x) 
+corpus <- tm_map(corpus, content_transformer(removeNumPunct))
+
+corpus = tm_map(corpus, content_transformer(tolower))
+
+corpus = tm_map(corpus, removePunctuation)
+
+corpus = tm_map(corpus, removeWords,stopwords("english"))
+
+corpus = tm_map(corpus, stemDocument)
+
+corpus = tm_map(corpus, stripWhitespace)
+```
+
+# Feature Vector -- Document Term Matrix
+```{r}
+dtm = DocumentTermMatrix(corpus)
+dtm
+dim(dtm)
+dtm = removeSparseTerms(dtm, 0.999)
+inspect(dtm)
+```
+
+# Splitting the data into training and testing set
+```{r}
+tweetsS <- as.data.frame(as.matrix(dtm))
+colnames(tweetsS) <- make.names(colnames(tweetsS))
+tweetsS$label <- data$target
+
+
+ind<-createDataPartition(tweetsS$label,p=0.85,list = FALSE)
+tweet_dtm_train<-tweetsS[ind,]
+tweet_dtm_test<-tweetsS[-ind,]
+prop.table(table(tweet_dtm_train$label))
+prop.table(table(tweet_dtm_test$label))
+
+```
+# RANDOM FOREST CLASSIFIER
+
+```{r}
+rf_classifier = randomForest(x = tweet_dtm_train,y = tweet_dtm_train$label,ntree = 5)
+
+rf_classifier
+rf_pred = predict(rf_classifier, newdata = tweet_dtm_test)
+
+# Making the Confusion Matrix
+library(caret)
+
+confusionMatrix(table(rf_pred,tweet_dtm_test$label))
+```
+
+# NAIVE BAYES CLASSIFIER
+```{r}
+library(e1071)
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+system.time( classifier_nb <- naiveBayes(tweet_dtm_train, tweet_dtm_train$label, laplace = 1,trControl = control,tuneLength = 7) )
+nb_pred = predict(classifier_nb, type = 'class', newdata = tweet_dtm_test)
+
+confusionMatrix(nb_pred,tweet_dtm_test$label)
+```
+
+# Model Building --LogisticsRegression
+```{r}
+logistic_model <- glm(label~., data=tweet_dtm_train, family = "binomial")
+
+
+lm_pred = predict(logistic_model, tweet_dtm_test,type = "response")
+lm_pred <- ifelse(lm_pred >0.5, 1, 0)
+table(tweet_dtm_test$label,lm_pred)
+   
+missing_classerr <- mean(lm_pred != tweet_dtm_test$label)
+print(paste('Accuracy =', 1 - missing_classerr))
+```
+
+# Model Building --SUPPORT VECTOR MACHINE
+```{r}
+svm_classifier <- svm(label~., data=tweet_dtm_train)
+svm_classifier
+svm_pred = predict(svm_classifier,tweet_dtm_test)
+
+confusionMatrix(svm_pred,tweet_dtm_test$label)
+```
+
+## WITH DOCUMENT TERM REPRESENTATION RANDOM FOREST>SUPPORT VECTOR MACHINE>NAIVE BAYES>LOGISTICS REGRESSION IN ACCURACY
+
+
+
+# Connection to twitter
+```{r}
+consumer_key <- 'EhyZY13tQluZhF8d3QB8Qx6V1'
+consumer_secret <- 'DWUtAOHdyAzydexftQTPuLFri2e7TrCkeN470NNNmXrDN3X8M8'
+access_token <- '1441737420374822919-JQuOcw0i4btkOBFutBG3UMXdMkgJPS'
+access_secret <- 'cvtCrSuA9NcIigJscuiD609xkDJiTt6LONkma4cz16UEI'
+```
+
+```{r}
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+```
+
+```{r}
+
+input=readline('Enter a keyword to search = ')
+```
+
+```{r}
+data <- searchTwitter(input,n = 100)
+data_df <-twListToDF(data)
+view(data_df)
+```
+
+```{r}
+tweets_df=data_df['text']
+str(tweets_df)
+corpus = VCorpus(VectorSource(tweets_df$text))
+
+removeURL <- function(x) gsub("http[^[:space:]]*", "", x)
+corpus <- tm_map(corpus, content_transformer(removeURL))
+
+removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x) 
+corpus <- tm_map(corpus, content_transformer(removeNumPunct))
+
+corpus = tm_map(corpus, content_transformer(tolower))
+
+corpus = tm_map(corpus, removePunctuation)
+
+corpus = tm_map(corpus, removeWords,stopwords("english"))
+
+corpus = tm_map(corpus, stemDocument)
+
+corpus = tm_map(corpus, stripWhitespace)
+dtm = DocumentTermMatrix(corpus)
+dtm
+dim(dtm)
+dtm = removeSparseTerms(dtm, 0.999)
+tweetsS <- as.data.frame(as.matrix(dtm))
+colnames(tweetsS) <- make.names(colnames(tweetsS))
+dim(tweetsS)
+```
+
